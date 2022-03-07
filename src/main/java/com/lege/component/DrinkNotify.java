@@ -9,12 +9,6 @@ import org.springframework.stereotype.Component;
 import javax.annotation.Resource;
 import java.util.*;
 
-/**
- * @author yinfeng
- * @description 定时喝水提醒
- * @since 2021/12/22 23:32
- */
-@Component
 @Slf4j
 public class DrinkNotify {
 
@@ -60,7 +54,7 @@ public class DrinkNotify {
      * 每一分钟提醒一次: 0 0/1 * * * ?
      * 每一小时提醒一次: 0 0 0/1 * * ?
      */
-    @Scheduled(cron = "0/2 * * * * ?")
+    @Scheduled(cron = "0/30 * * * * ?")
     public void handler() {
         Calendar calendar = Calendar.getInstance();
         // 获取当前小时
@@ -86,4 +80,3 @@ public class DrinkNotify {
     }
 
 }
-

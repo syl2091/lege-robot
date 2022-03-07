@@ -1,65 +1,94 @@
 package com.lege.util;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.util.EntityUtils;
 import org.springframework.util.StringUtils;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 
 /**
- * @author yinfeng
+ * @author lege
  * @description http工具类
  * @since 2021/12/23 23:21
  */
 public class HttpUtil {
-    /**
-     * 向指定URL发送GET方法的请求
-     *
-     * @param url   发送请求的URL
-     * @param param 请求参数，请求参数应该是 name1=value1&name2=value2 的形式。
-     * @return URL 所代表远程资源的响应结果
-     */
-    public static String sendGet(String url, String param) {
-        StringBuilder result = new StringBuilder();
-        BufferedReader in = null;
+    private static final CloseableHttpClient HTTP_CLIENT;
+
+    static {
+        PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
+        cm.setMaxTotal(100);
+        cm.setDefaultMaxPerRoute(20);
+        cm.setDefaultMaxPerRoute(50);
+        HTTP_CLIENT = HttpClients.custom().setConnectionManager(cm).build();
+    }
+
+    public static String get(String url) {
+        CloseableHttpResponse response = null;
+        BufferedReader in;
+        String result = "";
         try {
-            String urlNameString = url;
-            if (!StringUtils.isEmpty(param)) {
-                urlNameString += "?" + param;
-            }
-            URL realUrl = new URL(urlNameString);
-            // 打开和URL之间的连接
-            URLConnection connection = realUrl.openConnection();
-            // 设置通用的请求属性
-            connection.setRequestProperty("accept", "*/*");
-            connection.setRequestProperty("connection", "Keep-Alive");
-            connection.setRequestProperty("user-agent",
-                    "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1");
-            // 建立实际的连接
-            connection.connect();
-            // 定义 BufferedReader输入流来读取URL的响应
-            in = new BufferedReader(new InputStreamReader(
-                    connection.getInputStream()));
+            HttpGet httpGet = new HttpGet(url);
+            RequestConfig requestConfig = RequestConfig.custom().setConnectTimeout(30000).setConnectionRequestTimeout(30000).setSocketTimeout(30000).build();
+            httpGet.setConfig(requestConfig);
+            httpGet.setConfig(requestConfig);
+            httpGet.addHeader("Content-type", "application/json; charset=utf-8");
+            httpGet.setHeader("Accept", "application/json");
+            response = HTTP_CLIENT.execute(httpGet);
+            in = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+            StringBuilder sb = new StringBuilder("");
             String line;
+            String nL = System.getProperty("line.separator");
             while ((line = in.readLine()) != null) {
-                result.append(line);
+                sb.append(line).append(nL);
             }
-        } catch (Exception e) {
-            System.out.println("发送GET请求出现异常！" + e);
+            in.close();
+            result = sb.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (null != response) {
+                    response.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return result;
+    }
+
+    public static String post(String url, String jsonString) {
+        HttpPost httpPost = new HttpPost(url);
+        CloseableHttpClient client = HttpClients.createDefault();
+        //解决中文乱码问题
+        StringEntity entity = new StringEntity(jsonString, "utf-8");
+        entity.setContentEncoding("utf-8");
+        entity.setContentType("application/json");
+        httpPost.setEntity(entity);
+        HttpResponse response;
+        try {
+            response = client.execute(httpPost);
+            if(response.getStatusLine().getStatusCode() == 200){
+                HttpEntity httpEntity = response.getEntity();
+                return EntityUtils.toString(httpEntity, "utf-8");
+            }
+        } catch (IOException e) {
             e.printStackTrace();
         }
-        // 使用finally块来关闭输入流
-        finally {
-            try {
-                if (in != null) {
-                    in.close();
-                }
-            } catch (Exception e2) {
-                e2.printStackTrace();
-            }
-        }
-        return result.toString();
+        return null;
     }
-}
 
+}
